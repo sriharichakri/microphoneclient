@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Record Audio</title>
+</head>
+<body>
+    <button id="record-button">Record</button>
+    <audio id="recorded-audio" controls></audio>
+
+    <script>
+        // Get the record button and recorded audio element
+        const recordButton = document.getElementById('record-button');
+        const recordedAudio = document.getElementById('recorded-audio');
+
+        // Function to handle the recorded audio data
+        const handleRecordedAudio = (audioData) => {
+            // Create a blob from the audio data
+            const blob = new Blob([audioData], { type: 'audio/mp3' });
+
+            // Set the recorded audio element's src to the blob URL
+            recordedAudio.src = URL.createObjectURL(blob);
+
+            // Send the blob to the server via a POST request
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'https://microphoneservice.azurewebsites.net/upload');
+            xhr.send(blob);
+        };
+
+        // Function to start recording audio
+        const startRecording = () => {
+            // Request microphone access from the user
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then((stream) => {
+                    // Create a MediaRecorder object to record the audio
+                    const mediaRecorder = new MediaRecorder(stream);
+                    const chunks = [];
+
+                    // Add event listeners for when data is available and when recording stops
+                    mediaRecorder.addEventListener('dataavailable', (event) => {
+                        chunks.push(event.data);
+                    });
+
+                    mediaRecorder.addEventListener('stop', () => {
+                        handleRecordedAudio(new Blob(chunks));
+                    });
+
+                    // Start recording
+                    mediaRecorder.start();
+
+                    // Update the record button's text and add a click listener to stop recording
+                    recordButton.textContent = 'Stop';
+                    recordButton.removeEventListener('click', startRecording);
+                    recordButton.addEventListener('click', () => {
+                        mediaRecorder.stop();
+                        recordButton.textContent = 'Record';
+                        recordButton.removeEventListener('click', stopRecording);
+                        recordButton.addEventListener('click', startRecording);
+                    });
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+        };
+
+        // Add a click listener to the record button to start recording
+        recordButton.addEventListener('click', startRecording);
+    </script>
+</body>
+</html>
